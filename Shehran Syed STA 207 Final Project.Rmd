@@ -1,0 +1,162 @@
+---
+title: "Title"
+author: "Shehran Syed"
+date: "`r Sys.Date()`"
+output:
+  rmdformats::downcute:
+    default_style: "light"
+    downcute_theme: "default"
+    self_contained: true
+    thumbnails: true
+    lightbox: true
+    gallery: false
+    highlight: tango
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+## Global options
+knitr::opts_chunk$set(cache = TRUE)
+```
+
+```{r, include=FALSE}
+library(ggplot2)
+library(GGally)
+library(lme4)
+library(questionr)
+library(rmdformats)
+```
+
+------------------------------------------------------------------------
+
+# Abstract
+
+# Introduction
+
+# Background
+
+In this project, we analyze a subset of data collected by Steinmetz et al. (2019). While this document provides the basic understanding of the experiments, it is highly recommended that one consults the original publication for a more comprehensive understanding in order to improve the quality of the analysis report.
+
+In the study conducted by Steinmetz et al. (2019), experiments were performed on a total of 10 mice over 39 sessions. Each session comprised several hundred trials, during which visual stimuli were randomly presented to the mouse on two screens positioned on both sides of it. The stimuli varied in terms of contrast levels, which took values in {0, 0.25, 0.5, 1}, with 0 indicating the absence of a stimulus. The mice were required to make decisions based on the visual stimuli, using a wheel controlled by their forepaws. A reward or penalty was subsequently administered based on the outcome of their decisions. The activity of the neurons in the mice's visual cortex was recorded during the trials and made available in the form of spike trains, which are collections of timestamps corresponding to neuron firing.
+
+In this project, we focus specifically on the spike trains of neurons in the visual cortex, from the onset of the stimuli to 0.4 seconds post-onset. In addition, we only use five sessions (Sessions 1 to 5) from two mice (Cori and Frossman).
+
+## Questions of Interest
+
+The primary objectives of this project is to understand how the neural activity in the visual cortex is modulated by the two stimuli and how this information can be utilized to predict the outcome of the trial. To be specific, two questions of interest are as follows.
+
+1.  How do neurons in the visual cortex respond to the stimuli presented on the left and right? (35 pts)
+
+2.  How to predict the outcome of each trial using the neural activities and stimuli? (5 pts)
+
+For Question 1, various methodologies can be employed to formulate statistically sound hypotheses that align with the research objective. In particular, we would like to know if the left and right stimuli have additive effects on the neural responses (i.e., whether the interaction effect exists). A suggested model and hypothesis can be found in the provided outline below. However, **alternative models or hypotheses may also be proposed**, but it is necessary to consult with the teaching assistants and obtain written approval from the instructor no later than March 6th.
+
+For Question 2, a variety of models may be employed for building the predictive model and the only criteria is to have the best prediction performance. Here the prediction performance is evaluated by the sensitivity and specificity evaluated on the first 100 trials in Session 1. Additionally, it may be possible to enhance the prediction performance by thoroughly analyzing the rewarding mechanism described in Steinmetz et al. (2019).
+
+# Descriptive analysis
+
+```{r, include=FALSE}
+session=list()
+for(i in 1:5){
+  session[[i]]=readRDS(paste('./Data/session',i,'.rds',sep=''))
+}
+```
+
+```{r, include=FALSE}
+s = list()
+data = data.frame(NULL)
+
+for (ID in 1:5) {
+  n.trials = length(session[[ID]]$spks)
+  n.neurons = dim(session[[ID]]$spks[[1]])[1]
+  
+  # Obtain the firing rate
+  firingrate = numeric(n.trials)
+  for (i in 1:n.trials) {
+    firingrate[i] = sum(session[[ID]]$spks[[i]]) / n.neurons / 0.4
+  }
+  
+  # List of DataFrame for each session
+  s[[ID]] = data.frame(
+    session = as.factor(ID),
+    date = as.factor(session[[ID]]$date_exp),
+    name = as.factor(session[[ID]]$mouse_name),
+    contrast_left = as.factor(session[[ID]]$contrast_left),
+    contrast_right = as.factor(session[[ID]]$contrast_right),
+    feedback_type = as.factor(session[[ID]]$feedback_type),
+    firingrate = firingrate
+  )
+  
+  # Append to main DataFrame
+  data = rbind(data, s[[ID]])
+}
+```
+
+```{r}
+summary(data)
+```
+
+```{r}
+pilltabs(table("Left Contrast" = data$contrast_left, "Right Contrast" = data$contrast_right), count = TRUE, rows = F, cols = F, chisq = F, resid = F)
+
+table("Left Contrast" = data$contrast_left, "Right Contrast" = data$contrast_right)
+```
+
+```{r}
+bp_fr = ggplot(data = data, aes(session, firingrate)) +
+  geom_boxplot(aes(fill = name))
+
+bp_fr
+```
+
+```{r}
+ggplot(data, aes(contrast_right, contrast_left, fill = firingrate)) + 
+  geom_tile() +
+  facet_grid(feedback_type ~ session) +
+  scale_fill_gradient(low="blue4", high="orange")
+```
+
+```{r}
+ggplot(data, aes(abs(as.numeric(contrast_left) - as.numeric(contrast_right)), firingrate)) +
+  geom_point()
+```
+
+# Inferential analysis
+
+(Q1). Consider a mixed effect model where the two fixed-effect factors are left contrast and right contrast, and a random intercept is included for each session. As a result, Q1 reduces to test the null hypothesis that the two factors have no interaction effect.
+
+```{r}
+fit1 = lmer(firingrate ~ 0 + contrast_left*contrast_right + (1 | session), data)
+fit1
+```
+
+```{r}
+fit2 = lmer(firingrate ~ contrast_left + contrast_right + (1 | session), data)
+fit2
+```
+
+```{r}
+anova(fit1, fit2)
+```
+
+# Sensitivity analysis
+
+(Q1). Conduct model diagnostics and/or sensitivity analysis. In addition to the regular diagnostics, you should examine whether one need to account for the random effects from sessions. You may also explore using other statistics as outcomes.
+
+# Predictive Modeling
+
+(Q2). Make sure that you do not use the first 100 trials in Session 1 in model training.
+
+# Discussion
+
+# Reference {.unnumbered}
+
+Steinmetz, N.A., Zatka-Haas, P., Carandini, M. et al. Distributed coding of choice, action and engagement across the mouse brain. Nature 576, 266--273 (2019). <https://doi.org/10.1038/s41586-019-1787-x>
+
+# Appendix {.unnumbered}
+
+# Session info {.unnumbered}
+
+```{r}
+sessionInfo()
+```

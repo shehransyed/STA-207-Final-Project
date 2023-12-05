@@ -1,0 +1,15 @@
+ggplot2
+GGally
+Matrix
+lme4
+questionr
+rmdformats
+dplyr
+gridExtra
+cowplot
+zoo
+lmtest
+ROCR
+knitr
+kableExtra
+lmerTest
