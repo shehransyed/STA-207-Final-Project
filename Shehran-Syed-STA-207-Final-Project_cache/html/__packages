@@ -1,6 +1,15 @@
+dplyr
+knitr
+kableExtra
 ggplot2
 GGally
+gridExtra
+cowplot
 Matrix
 lme4
+lmerTest
+zoo
+lmtest
 questionr
+ROCR
 rmdformats
